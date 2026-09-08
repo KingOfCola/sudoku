@@ -16,6 +16,38 @@ N = 9
 K = 3
 
 def standardize_blocks(*blocks):
+    """Put a group of blocks into canonical form.
+
+    Standardization has two steps:
+
+    1. Relabel all blocks with :func:`relabel_blocks` so the first block
+       becomes the identity sequence ``0, 1, ..., n-1`` while equal tokens
+       stay equal across blocks.
+    2. Reorder the columns of every block *after the first* with
+       :func:`lexicograph_block` so that its first row is ascending.
+
+    The first block is left as the plain identity sequence (its first row is
+    already sorted, so step 2 would be a no-op).
+
+    All blocks are assumed to be permutations of ``0 .. n-1``.
+
+    Args:
+        *blocks: One or more length-n int arrays, each a permutation of 0..n-1.
+
+    Returns:
+        List of standardized blocks, in the same order. The first entry is
+        ``array([0, 1, ..., n-1])``; every other entry has an ascending first
+        row.
+
+    Example:
+        >>> b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
+        >>> b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+        >>> s1, s2 = standardize_blocks(b1, b2)
+        >>> s1
+        array([0, 1, 2, 3, 4, 5, 6, 7, 8])
+        >>> s2
+        array([3, 7, 8, 4, 2, 5, 0, 6, 1])
+    """
     relabeled_blocks = relabel_blocks(*blocks)
     return [relabeled_blocks[0]] + [lexicograph_block(block) for block in relabeled_blocks[1:]]
 

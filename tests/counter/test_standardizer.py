@@ -6,7 +6,11 @@ Cell values are 0-based (digits 0 to 8).
 import numpy as np
 import pytest
 
-from counter.standardizer import lexicograph_block, relabel_blocks
+from counter.standardizer import (
+    lexicograph_block,
+    relabel_blocks,
+    standardize_blocks,
+)
 
 
 def test_sorts_columns_by_first_row():
@@ -145,3 +149,92 @@ def test_relabel_does_not_mutate_inputs():
 
     np.testing.assert_array_equal(b1, b1_copy)
     np.testing.assert_array_equal(b2, b2_copy)
+
+
+# --- standardize_blocks ---------------------------------------------------------
+
+
+def test_standardize_first_block_becomes_identity():
+    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
+    b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+
+    result = standardize_blocks(b1, b2)
+
+    np.testing.assert_array_equal(result[0], np.arange(9))
+
+
+def test_standardize_other_blocks_have_ascending_first_row():
+    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
+    b2 = np.array([8, 1, 4, 0, 6, 2, 7, 3, 5])
+    b3 = np.array([2, 7, 0, 5, 8, 3, 6, 1, 4])
+
+    result = standardize_blocks(b1, b2, b3)
+
+    for block in result[1:]:
+        assert list(block[:3]) == sorted(block[:3])
+
+
+def test_standardize_matches_relabel_then_lexicograph():
+    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
+    b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+
+    r1, r2 = relabel_blocks(b1, b2)
+    expected = [r1, lexicograph_block(r2)]
+
+    result = standardize_blocks(b1, b2)
+
+    np.testing.assert_array_equal(result[0], expected[0])
+    np.testing.assert_array_equal(result[1], expected[1])
+
+
+def test_standardize_known_result():
+    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
+    b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+
+    s1, s2 = standardize_blocks(b1, b2)
+
+    np.testing.assert_array_equal(s1, [0, 1, 2, 3, 4, 5, 6, 7, 8])
+    np.testing.assert_array_equal(s2, [3, 7, 8, 4, 2, 5, 0, 6, 1])
+
+
+def test_standardize_preserves_row_membership_of_other_blocks():
+    # Relabelling + column reordering never moves a value across rows.
+    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
+    b2 = np.array([8, 1, 4, 0, 6, 2, 7, 3, 5])
+
+    r1, r2 = relabel_blocks(b1, b2)
+    result = standardize_blocks(b1, b2)
+
+    for row in range(3):
+        before = set(r2[row * 3:(row + 1) * 3].tolist())
+        after = set(result[1][row * 3:(row + 1) * 3].tolist())
+        assert before == after
+
+
+def test_standardize_is_idempotent():
+    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
+    b2 = np.array([8, 1, 4, 0, 6, 2, 7, 3, 5])
+
+    once = standardize_blocks(b1, b2)
+    twice = standardize_blocks(*once)
+
+    for a, b in zip(once, twice):
+        np.testing.assert_array_equal(a, b)
+
+
+def test_standardize_returns_one_block_per_input():
+    blocks = [np.random.permutation(9) for _ in range(4)]
+
+    result = standardize_blocks(*blocks)
+
+    assert len(result) == len(blocks)
+
+
+def test_standardize_already_canonical_is_unchanged():
+    b1 = np.arange(9)
+    b2 = np.array([2, 5, 7, 0, 3, 8, 1, 4, 6])  # first row already ascending
+
+    s1, s2 = standardize_blocks(b1, b2)
+
+    np.testing.assert_array_equal(s1, b1)
+    np.testing.assert_array_equal(s2, b2)
