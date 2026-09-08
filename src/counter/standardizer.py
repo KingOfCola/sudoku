@@ -15,14 +15,41 @@ import numpy as np
 N = 9
 K = 3
 
-def standardize_blocks(b1, b2, b3):
-    pass
+def standardize_blocks(*blocks):
+    relabeled_blocks = relabel_blocks(*blocks)
+    return [relabeled_blocks[0]] + [lexicograph_block(block) for block in relabeled_blocks[1:]]
 
-def relabel_blocks(b1, b2, b3):
-    label = np.arange(N)
-    label[b1] = np.arange(N)
+def relabel_blocks(*blocks):
+    """Relabel every block so that the first one becomes 0, 1, ..., n-1.
 
-    return label[b2], label[b3]
+    The original values are treated as opaque tokens. The first block defines
+    the relabelling: the token sitting at position ``i`` of ``blocks[0]`` is
+    renamed to ``i``. The same token-to-digit map is then applied to every
+    block, so equal tokens across blocks stay equal after relabelling.
+
+    All blocks are assumed to be permutations of ``0 .. n-1``.
+
+    Args:
+        *blocks: One or more length-n int arrays, each a permutation of 0..n-1.
+
+    Returns:
+        Tuple of relabelled blocks, in the same order. The first is always
+        ``array([0, 1, ..., n-1])``.
+
+    Example:
+        >>> a, b = relabel_blocks(np.array([2, 0, 1]), np.array([1, 2, 0]))
+        >>> a
+        array([0, 1, 2])
+        >>> b            # token 1 -> 2, token 2 -> 0, token 0 -> 1
+        array([2, 0, 1])
+    """
+    n = len(blocks[0])
+
+    label = np.arange(n)
+    label[blocks[0]] = np.arange(n)
+
+    return tuple(label[block] for block in blocks)
+
 
 def lexicograph_block(block):
     """Reorder a block's 3 columns so its first row reads in ascending order.
