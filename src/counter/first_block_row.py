@@ -55,9 +55,10 @@ def enumerate_first_row():
         first_row_block_2 = tuple(sorted(digits_block_2))
         first_row_block_3 = tuple(sorted(remaining_digits - set(first_row_block_2)))
 
-        yield tuple(first_row_block_1 + first_row_block_2 + first_row_block_3)
+        if first_row_block_2[0] < first_row_block_3[0]:
+            yield tuple(first_row_block_1 + first_row_block_2 + first_row_block_3)
 
-def enumerate_blocks_first_br():
+def enumerate_canonical_first_band():
     """Yield every canonical first band of a 9x9 sudoku.
 
     This is the module's main entry point. ``base`` is seeded with the fixed
