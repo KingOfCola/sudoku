@@ -2,10 +2,11 @@
 
 Blocks correspond to the 3x3 subgrids of a sudoku puzzle. The functions in this module are used to standardize and relabel these blocks for further processing.
 They are stored as a 1D array of length 9, where each element corresponds to a cell in the block, ordered from top-left to bottom-right.
+Cell values are 0-based, i.e. the digits 0 to 8 (not 1 to 9).
 For example, a block represented as:
-    [1, 2, 3,
-     4, 5, 6,
-     7, 8, 9]
+    [0, 1, 2,
+     3, 4, 5,
+     6, 7, 8]
 
 """
 
@@ -38,12 +39,12 @@ def lexicograph_block(block):
         A new length-9 int array with the columns reordered.
 
     Example:
-        Grid    4 8 2        columns sorted by       2 4 8
-                5 6 7   -->  their top value    -->  7 5 6
-                3 1 9        (2 < 4 < 8)             9 3 1
-        >>> block = np.array([4, 8, 2, 5, 6, 7, 3, 1, 9])
+        Grid    3 7 1        columns sorted by       1 3 7
+                4 5 6   -->  their top value    -->  6 4 5
+                2 0 8        (1 < 3 < 7)             8 2 0
+        >>> block = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
         >>> lexicograph_block(block)
-        array([2, 4, 8, 7, 5, 6, 9, 3, 1])
+        array([1, 3, 7, 6, 4, 5, 8, 2, 0])
     """
     order = np.argsort(block[:K])
     new_block = np.zeros_like(block)
