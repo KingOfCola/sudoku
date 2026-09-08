@@ -1,6 +1,6 @@
 import numpy as np
 from counter.first_block_row import enumerate_canonical_first_band
-from counter.collapser import collapser_by_column
+from counter.collapser import collapse_by_permutation, collapser_by_column
 
 def print_band(band):
     """Print a band in a human-readable format."""
@@ -23,7 +23,10 @@ if __name__ == "__main__":
 
     print(f"Total number of blocks generated: {count}")
 
-    collapsed_bands = collapser_by_column(bands)
+    collapsed_bands_by_permutation = collapse_by_permutation(bands)
+    print(f"Total number of blocks after collapsing by permutation: {len(collapsed_bands_by_permutation)}")
+
+    collapsed_bands = list(collapser_by_column(collapsed_bands_by_permutation).values())
     print(f"Total number of blocks after collapsing: {len(collapsed_bands)}")
 
     for i, band in enumerate(collapsed_bands[:10]):
