@@ -95,7 +95,7 @@ def load_grids_text(file):
 
     Returns:
         list[numpy.ndarray]: the grids, each shape ``(k**2, k**2)`` dtype
-        ``int``, in the order they were written.
+            ``int``, in the order they were written.
 
     Raises:
         ValueError: if the header is missing/malformed, a row has the wrong
@@ -155,7 +155,7 @@ def load_grids_binary(file):
 
     Returns:
         list[numpy.ndarray]: the grids, each shape ``(k**2, k**2)`` dtype
-        ``int``, in the order they were written.
+            ``int``, in the order they were written.
 
     Raises:
         ValueError: if the magic bytes or format version are not recognised.
@@ -192,7 +192,7 @@ def _check_grids(grids):
 
     Returns:
         tuple[list, int, int]: the grids (as a list), their common side
-        length ``n``, and the block size ``k = isqrt(n)``.
+            length ``n``, and the block size ``k = isqrt(n)``.
 
     Raises:
         ValueError: if ``grids`` is empty, a grid is not square, grids have

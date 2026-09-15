@@ -347,9 +347,19 @@ def test_collapse_by_permutation_key_is_the_orbit_minimum():
 def test_collapse_by_permutation_representatives_are_standardized():
     result = collapse_by_permutation(first_canonical_bands(24))
 
-    for key, band in result.items():
+    for key, entry in result.items():
+        band = entry["representative"]
         assert key == encode_by_band(band)
         assert np.array_equal(standardized(band), band)
+
+
+def test_collapse_by_permutation_orbit_size_matches_distinct_permutation_count():
+    band = first_canonical_bands(10)[9]
+
+    (entry,) = collapse_by_permutation([band]).values()
+
+    expected = len({encode_by_band(p) for p in generate_permutations(band)})
+    assert entry["orbit_size"] == expected
 
 
 def test_collapse_by_permutation_groups_a_band_with_its_permutations():
@@ -374,7 +384,8 @@ def test_collapse_by_permutation_reduces_and_is_idempotent():
     bands = first_canonical_bands(24)
 
     once = collapse_by_permutation(bands)
-    twice = collapse_by_permutation(list(once.values()))
+    representatives = [entry["representative"] for entry in once.values()]
+    twice = collapse_by_permutation(representatives)
 
     assert len(once) < len(bands)
     assert set(once) == set(twice)

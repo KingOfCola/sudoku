@@ -32,6 +32,47 @@ modules they cover. Start from the root [README.md](README.md) and follow the
 links rather than re-deriving the tree from scratch. Generated directories
 (`.venv/`, `__pycache__/`, `.pytest_cache/`) are excluded and get no README.
 
+## Docstring style
+
+Docstrings use a Google-style `Args:` / `Returns:` / `Yields:` / `Raises:`
+layout with a strict three-level indent hierarchy, relative to the
+docstring's own base indent (4 spaces under a `def`):
+
+1. **Section keyword** (`Args:`, `Returns:`, `Yields:`, `Raises:`) sits at
+   the base indent.
+2. **Each entry** in that section is indented one level deeper than the
+   section keyword — one entry per parameter for `Args:`; for
+   `Returns:`/`Yields:`/`Raises:`, the `name:`/`type:` label, or (if there's
+   no label) the single sentence itself, treated as that section's one
+   implicit entry.
+3. **Wrapped/continuation lines** of an entry's description are indented one
+   level deeper still — two levels past the section keyword. This is what
+   visually distinguishes "still describing this entry" from "a new entry
+   starts here", and it applies even to an unlabeled single-sentence
+   `Returns:`/`Raises:` (nest its continuation lines too, per point 2).
+
+Example (`src/counter/collapser.py`):
+
+```
+    Args:
+        bands: Iterable of first bands, each a ``(k, k**2)`` int array.
+
+    Returns:
+        dict: maps each signature integer (see :func:`encode_columns`) to
+            the first band seen carrying that signature. Its length is the
+            number of distinct signatures; the multiplicity of each class
+            is not retained.
+```
+
+Example of the unlabeled case (`src/checker/checker.py`):
+
+```
+    Returns:
+        ``True`` if the grid is a valid Latin square, ``False`` otherwise
+            (wrong shape, a repeated value in a row/column, or an
+            out-of-range value).
+```
+
 ## Mandatory rules for all agents working in this repo
 
 1. **Always use the project's `.venv/` for any Python execution or pytest run.** Never use a system/global Python interpreter for this project.
@@ -42,5 +83,7 @@ links rather than re-deriving the tree from scratch. Generated directories
 3. **Keep doctests passing.** `addopts` includes `--doctest-modules`, so docstring examples in `src/` are executed as tests — any docstring `>>>` example must stay correct.
 4. **Don't hand-edit `.pytest_cache/` or `__pycache__/` artifacts** — they're generated and git-ignored.
 5. **Every code change updates its directory's `README.md` in the same commit/turn.** If you add, remove, rename, or change the behavior/signature of a file, function, or link target in a directory, update that directory's `README.md` (and any other README whose "Related"/links section points at what changed) so the docs never drift from the code. If you create a new directory with real content, give it a `README.md` following the existing pattern (contents list + links to important files + "Related" section) and link it from its parent's `README.md`.
+6. **Follow the [Docstring style](#docstring-style) indentation hierarchy** for every `Args:`/`Returns:`/`Yields:`/`Raises:` section you write or edit — including nesting continuation lines under an unlabeled single-sentence entry.
+7. **Do not add tests for code under `scripts/`.** `tests/` only mirrors `src/`; `scripts/` holds runnable drivers/exploration tools without a stable contract, and the user has explicitly asked for them to stay untested.
 
 If the user gives you additional standing rules for this repo, add them to this file (or to persistent memory, per the memory system) rather than only applying them ad hoc.

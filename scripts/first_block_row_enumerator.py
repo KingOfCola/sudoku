@@ -1,3 +1,5 @@
+import json
+
 from counter.first_block_row import enumerate_canonical_first_band
 from counter.collapser import collapse_by_permutation, collapser_by_column
 
@@ -22,7 +24,11 @@ if __name__ == "__main__":
     collapsed_bands_by_permutation = collapse_by_permutation(bands)
     print(f"Total number of blocks after collapsing by permutation: {len(collapsed_bands_by_permutation)}")
 
-    collapsed_bands = list(collapser_by_column(collapsed_bands_by_permutation.values()).values())
+    with open("outputs/collapsed_bands.json", "w") as f:
+        json.dump({str(k): v["orbit_size"] for k, v in collapsed_bands_by_permutation.items()}, f)
+
+    collapsed_representatives = [v["representative"] for v in collapsed_bands_by_permutation.values()]
+    collapsed_bands = list(collapser_by_column(collapsed_representatives).values())
     print(f"Total number of blocks after collapsing: {len(collapsed_bands)}")
 
     for i, band in enumerate(collapsed_bands[:10]):

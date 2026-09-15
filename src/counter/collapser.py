@@ -33,8 +33,8 @@ def collapser_by_column(bands):
 
     Returns:
         dict: maps each signature integer (see :func:`encode_columns`) to the
-        first band seen carrying that signature. Its length is the number of
-        distinct signatures; the multiplicity of each class is not retained.
+            first band seen carrying that signature. Its length is the number of
+            distinct signatures; the multiplicity of each class is not retained.
     """
     uncollapsed = {}
 
@@ -56,9 +56,9 @@ def encode_columns(band):
 
     Returns:
         int: a value in ``[0, 2 ** (n * n))``. Two bands compare equal here
-        exactly when they hold the same set of digits in every column --
-        regardless of digit order within a column or of how the rows are
-        arranged.
+            exactly when they hold the same set of digits in every column --
+            regardless of digit order within a column or of how the rows are
+            arranged.
     """
     n = band.shape[1]
     encoding = 0
@@ -84,10 +84,12 @@ def collapse_by_permutation(bands):
         bands: Iterable of first bands, each a ``(k, k**2)`` int array.
 
     Returns:
-        dict: maps the orbit key -- ``min`` over :func:`encode_by_band` of every
-        standardized permutation in the orbit -- to the standardized band
-        achieving that minimum. One entry per equivalence class; class sizes
-        are not retained.
+        dict: maps the orbit key -- ``min`` over :func:`encode_by_band` of
+            every standardized permutation in the orbit -- to a dict with
+            ``"representative"`` (the standardized band achieving that
+            minimum) and ``"orbit_size"`` (the number of distinct
+            standardized permutations in the orbit). One entry per
+            equivalence class.
     """
     collapsed = {}
     seen = set()
@@ -107,7 +109,10 @@ def collapse_by_permutation(bands):
 
         base_encoding = min(orbit)
         if base_encoding not in collapsed:
-            collapsed[base_encoding] = orbit[base_encoding]
+            collapsed[base_encoding] = {
+                "representative": orbit[base_encoding],
+                "orbit_size": len(orbit),
+            }
 
     return collapsed
 

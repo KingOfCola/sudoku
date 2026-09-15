@@ -25,8 +25,8 @@ def check_latin(grid):
 
     Returns:
         ``True`` if the grid is a valid Latin square, ``False`` otherwise
-        (wrong shape, a repeated value in a row/column, or an out-of-range
-        value).
+            (wrong shape, a repeated value in a row/column, or an
+            out-of-range value).
 
     Example:
         >>> check_latin(np.array([[0, 1], [1, 0]]))
@@ -69,8 +69,8 @@ def check_blocks(grid):
 
     Returns:
         ``True`` if every block is a permutation of ``0 .. k**2 - 1``,
-        ``False`` otherwise (wrong shape, a repeated value in a block, or an
-        out-of-range value).
+            ``False`` otherwise (wrong shape, a repeated value in a block,
+            or an out-of-range value).
 
     Example:
         >>> grid = np.array([[0, 1, 2, 3],

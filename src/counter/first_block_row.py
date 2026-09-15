@@ -43,7 +43,7 @@ def enumerate_first_row():
 
     Yields:
         tuple[int]: a length-``N`` tuple, the concatenated first rows of
-        blocks 1, 2 and 3.
+            blocks 1, 2 and 3.
     """
     remaining_digits = set(range(K, K ** 2))
     first_row_block_1 = tuple(range(K))
@@ -65,8 +65,8 @@ def enumerate_canonical_first_band():
     block constraints.
 
     Yields:
-        numpy.ndarray: a fresh ``(K, K**2)`` (3x9) int array. Each array is a
-        copy and may be retained.
+        numpy.ndarray: a fresh ``(K, K**2)`` (3x9) int array. Each array is
+            a copy and may be retained.
     """
     base = np.zeros((K, N), dtype=int)
     for row in range(K):
