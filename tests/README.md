@@ -15,6 +15,7 @@ also run as tests).
 
 - [checker/README.md](checker/README.md) — tests for `src/checker`.
 - [counter/README.md](counter/README.md) — tests for `src/counter`.
+- [storage/README.md](storage/README.md) — tests for `src/storage`.
 
 ## Related
 

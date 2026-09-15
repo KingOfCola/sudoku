@@ -16,14 +16,16 @@ Grids of general order `k` are supported (`k=3` is the classic 9x9 sudoku; `k=2`
 - `src/counter/first_block_row.py` — enumerates every canonical first band (shape `(k, k**2)`) for `k=3`.
 - `src/counter/standardizer.py` — puts a band into canonical form in place: `relabel_band` (first block becomes the identity block), `lexicograph_block` (ascending first row per block), `standardize_band` (both steps).
 - `src/counter/collapser.py` — reduces the enumerated bands to inequivalent representatives: `collapser_by_column` (group by per-column digit signature) and `collapse_by_permutation` (group by full row/column permutation orbit).
+- `src/storage/grid_store.py` — saves/loads lists of grids to/from a human-readable text format and a compact bit-packed binary format (`save_grids_text`/`load_grids_text`, `save_grids_binary`/`load_grids_binary`); accepts paths or already-open file objects.
 - `scripts/first_block_row_enumerator.py` — runnable driver that ties enumeration + collapsing together and prints counts.
-- `tests/` mirrors `src/` (`tests/checker/`, `tests/counter/`).
+- `tests/` mirrors `src/` (`tests/checker/`, `tests/counter/`, `tests/storage/`).
 - `conftest.py` — parses `.env`'s `PYTHONPATH` so the IDE and pytest agree on import paths.
 
 ## Per-directory documentation
 
 Every real directory (root, `docs/`, `scripts/`, `src/`, `src/checker/`,
-`src/counter/`, `tests/`, `tests/checker/`, `tests/counter/`) has its own
+`src/counter/`, `src/storage/`, `tests/`, `tests/checker/`, `tests/counter/`,
+`tests/storage/`) has its own
 small `README.md` acting as a local index: what the directory holds, links to
 its important files, and "Related" links to sibling/parent/child docs and the
 modules they cover. Start from the root [README.md](README.md) and follow the

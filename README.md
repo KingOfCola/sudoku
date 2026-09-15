@@ -16,10 +16,12 @@ to related modules/docs. Start here and follow the links:
 - [src/README.md](src/README.md) — library code.
   - [src/checker/README.md](src/checker/README.md) — grid validity checks.
   - [src/counter/README.md](src/counter/README.md) — band enumeration, standardization, collapsing.
+  - [src/storage/README.md](src/storage/README.md) — text/binary on-disk storage for lists of grids.
 - [scripts/README.md](scripts/README.md) — runnable driver script(s).
 - [tests/README.md](tests/README.md) — test suite.
   - [tests/checker/README.md](tests/checker/README.md)
   - [tests/counter/README.md](tests/counter/README.md)
+  - [tests/storage/README.md](tests/storage/README.md)
 
 ## Running
 
