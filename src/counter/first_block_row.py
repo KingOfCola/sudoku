@@ -1,17 +1,14 @@
 """Enumerate the canonical first bands of a 9x9 sudoku.
 
 A *band* is a block-row: the top three rows of the grid, made of three
-horizontally adjacent K x K blocks. Here it is stored flattened row-major in a
-length ``K ** 3`` (27) integer array with values ``0 .. N-1``:
-
-    indices  0..8  -> row 0 (first row of blocks 1, 2, 3)
-    indices  9..17 -> row 1
-    indices 18..26 -> row 2
+horizontally adjacent K x K blocks. It is a 2D ``ndarray`` of shape
+``(K, K**2)`` (3x9) with ordinary matrix indexing -- ``band[i, j]`` is row
+``i``, column ``j`` -- holding values ``0 .. N-1``.
 
 A band is *canonical* (the standard form produced by
 :mod:`counter.standardizer`) when:
 
-* block 1 (columns 0..K-1) is the identity block::
+* block 1 (columns ``0 .. K-1``) is the identity block::
 
       0 1 2
       3 4 5
@@ -68,18 +65,17 @@ def enumerate_canonical_first_band():
     block constraints.
 
     Yields:
-        numpy.ndarray: a fresh length-``K ** 3`` (27) int array, the band
-        flattened row-major. Each array is a copy and may be retained.
+        numpy.ndarray: a fresh ``(K, K**2)`` (3x9) int array. Each array is a
+        copy and may be retained.
     """
-    base = np.zeros(K ** 3, dtype=int)
+    base = np.zeros((K, N), dtype=int)
     for row in range(K):
-        base[row * N: row * N + K] = range(K * row, K * (row + 1))
-
+        base[row, 0:K] = range(K * row, K * (row + 1))
 
     for first_row in enumerate_first_row():
-        base[:N] = first_row
-        for block in iterate_blocks_first_rb(base, 1, 1):
-            yield block
+        base[0, :] = first_row
+        for band in iterate_blocks_first_rb(base, 1, 1):
+            yield band
 
 def iterate_blocks_first_rb(base, row, block):
     """Recursively fill cell-group ``(row, block)`` and everything after it.
@@ -94,9 +90,9 @@ def iterate_blocks_first_rb(base, row, block):
 
     for values in itertools.combinations(possible_values, K):
         for permutation in itertools.permutations(values):
-            base[row * N + block * K: row * N + block * K + K] = permutation
+            base[row, block * K:(block + 1) * K] = permutation
 
-            # If we're at the last column of the last row, yield the block. Otherwise, move to the next cell.
+            # If we're at the last column of the last row, yield the band. Otherwise, move to the next cell.
             if block == K - 1:
                 if row == K - 1:
                     yield base.copy()
@@ -115,12 +111,7 @@ def get_possible_values_row_3(base, row, block):
     the same block (block constraint) and in earlier blocks of the same row
     (row constraint).
     """
-    forbidden_values = set()
-    for r in range(row):
-        for col in range(K):
-            forbidden_values.add(base[r * N + block * K + col])
-    for b in range(block):
-        for col in range(K):
-            forbidden_values.add(base[row * N + b * K + col])
+    forbidden_values = set(base[:row, block * K:(block + 1) * K].ravel().tolist())
+    forbidden_values |= set(base[row, :block * K].tolist())
 
     return set(range(N)) - forbidden_values

@@ -70,11 +70,15 @@ def test_check_latin_rejects_non_square_grid():
 
 
 def test_check_blocks_accepts_valid_4x4():
-    assert check_blocks(VALID_4x4, k=2) is True
+    assert check_blocks(VALID_4x4) is True
 
 
-def test_check_blocks_rejects_wrong_shape():
-    assert check_blocks(np.zeros((9, 9), dtype=int), k=2) is False
+def test_check_blocks_rejects_non_square_grid():
+    assert check_blocks(np.zeros((4, 8), dtype=int)) is False
+
+
+def test_check_blocks_rejects_side_that_is_not_a_perfect_square():
+    assert check_blocks(np.zeros((6, 6), dtype=int)) is False
 
 
 def test_check_blocks_rejects_repeated_value_in_a_block():
@@ -82,20 +86,20 @@ def test_check_blocks_rejects_repeated_value_in_a_block():
     # Break only the top-left block: [0, 1, 2, 3] -> [0, 1, 0, 3].
     grid[1, 0] = 0
 
-    assert check_blocks(grid, k=2) is False
+    assert check_blocks(grid) is False
 
 
 def test_check_blocks_rejects_out_of_range_value():
     grid = VALID_4x4.copy()
     grid[0, 0] = 4
 
-    assert check_blocks(grid, k=2) is False
+    assert check_blocks(grid) is False
 
 
 def test_check_blocks_is_independent_of_rows_and_columns():
     # Rows and columns are fine, but the 2x2 blocks are not.
     assert check_latin(LATIN_BUT_BAD_BLOCKS_4x4) is True
-    assert check_blocks(LATIN_BUT_BAD_BLOCKS_4x4, k=2) is False
+    assert check_blocks(LATIN_BUT_BAD_BLOCKS_4x4) is False
 
 
 @pytest.mark.parametrize(
@@ -106,7 +110,7 @@ def test_check_blocks_is_independent_of_rows_and_columns():
     ],
 )
 def test_full_4x4_grid_is_sudoku_iff_latin_and_blocks(grid):
-    is_sudoku = check_latin(grid) and check_blocks(grid, k=2)
+    is_sudoku = check_latin(grid) and check_blocks(grid)
     # Reference check: sudoku == every row, column and block is a
     # permutation of range(4).
     def is_perm(vals):

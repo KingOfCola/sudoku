@@ -1,240 +1,282 @@
 """Tests for :mod:`counter.standardizer`.
 
-Cell values are 0-based (digits 0 to 8).
+Grids, bands and blocks are 2D ndarrays with matrix indexing (``x[i, j]`` is
+row ``i``, column ``j``). Cell values are 0-based (digits 0 to k**2 - 1). Every
+function under test mutates its array argument in place and returns ``None``.
 """
 
 import numpy as np
-import pytest
 
 from counter.standardizer import (
     lexicograph_block,
-    relabel_blocks,
-    standardize_blocks,
+    relabel_band,
+    standardize_band,
 )
+
+IDENTITY_BLOCK = np.arange(9).reshape(3, 3)
+
+
+def band(*rows):
+    return np.array(rows)
+
+
+# --- lexicograph_block -----------------------------------------------------
 
 
 def test_sorts_columns_by_first_row():
-    # Block laid out as:
+    # Block 0 laid out as:
     #   3 7 1
     #   4 5 6
     #   2 0 8
-    # Sorting the columns so the first row ascends (1, 3, 7) reorders every row
+    # Sorting its columns so the first row ascends (1, 3, 7) reorders every row
     # with the same column permutation.
-    block = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    expected = np.array([1, 3, 7, 6, 4, 5, 8, 2, 0])
+    grid = band([3, 7, 1, 0, 0, 0, 0, 0, 0],
+                [4, 5, 6, 0, 0, 0, 0, 0, 0],
+                [2, 0, 8, 0, 0, 0, 0, 0, 0])
 
-    np.testing.assert_array_equal(lexicograph_block(block), expected)
+    result = lexicograph_block(grid, 0, 0)
+
+    assert result is None
+    np.testing.assert_array_equal(grid[:, :3], [[1, 3, 7], [6, 4, 5], [8, 2, 0]])
 
 
 def test_first_row_is_ascending_after_call():
-    block = np.array([8, 0, 4, 1, 7, 3, 6, 2, 5])
-    result = lexicograph_block(block)
+    grid = band([8, 0, 4, 1, 7, 3, 6, 2, 5],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-    assert list(result[:3]) == sorted(result[:3])
+    for block_col in range(3):
+        lexicograph_block(grid, 0, block_col)
+        first_row = grid[0, block_col * 3:block_col * 3 + 3]
+        assert list(first_row) == sorted(first_row)
 
 
 def test_already_sorted_block_is_unchanged():
-    block = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8])
+    grid = band([0, 1, 2, 0, 0, 0, 0, 0, 0],
+                [3, 4, 5, 0, 0, 0, 0, 0, 0],
+                [6, 7, 8, 0, 0, 0, 0, 0, 0])
+    original = grid.copy()
 
-    np.testing.assert_array_equal(lexicograph_block(block), block)
+    lexicograph_block(grid, 0, 0)
+
+    np.testing.assert_array_equal(grid, original)
 
 
 def test_is_idempotent():
-    block = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
+    grid = band([3, 7, 1, 0, 0, 0, 0, 0, 0],
+                [4, 5, 6, 0, 0, 0, 0, 0, 0],
+                [2, 0, 8, 0, 0, 0, 0, 0, 0])
 
-    once = lexicograph_block(block)
-    twice = lexicograph_block(once)
+    lexicograph_block(grid, 0, 0)
+    once = grid.copy()
+    lexicograph_block(grid, 0, 0)
 
-    np.testing.assert_array_equal(once, twice)
-
-
-def test_does_not_mutate_input():
-    block = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    original = block.copy()
-
-    lexicograph_block(block)
-
-    np.testing.assert_array_equal(block, original)
+    np.testing.assert_array_equal(grid, once)
 
 
-def test_permutation_is_preserved_per_row():
-    block = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    result = lexicograph_block(block)
+def test_column_contents_are_preserved():
+    grid = band([3, 7, 1, 0, 0, 0, 0, 0, 0],
+                [4, 5, 6, 0, 0, 0, 0, 0, 0],
+                [2, 0, 8, 0, 0, 0, 0, 0, 0])
+    before_columns = {frozenset(grid[:, c].tolist()) for c in range(3)}
 
-    for row in range(3):
-        src = set(block[row * 3:(row + 1) * 3].tolist())
-        dst = set(result[row * 3:(row + 1) * 3].tolist())
-        assert src == dst
+    lexicograph_block(grid, 0, 0)
 
-
-@pytest.mark.parametrize(
-    "block, expected_first_row",
-    [
-        (np.array([2, 0, 1, 0, 0, 0, 0, 0, 0]), [0, 1, 2]),
-        (np.array([6, 8, 7, 0, 0, 0, 0, 0, 0]), [6, 7, 8]),
-    ],
-)
-def test_first_row_reordered_ascending(block, expected_first_row):
-    result = lexicograph_block(block)
-
-    assert list(result[:3]) == expected_first_row
+    after_columns = {frozenset(grid[:, c].tolist()) for c in range(3)}
+    assert before_columns == after_columns
 
 
-# --- relabel_blocks ---------------------------------------------------------
+def test_only_the_selected_blocks_columns_move():
+    grid = band([0, 1, 2, 5, 3, 4, 6, 7, 8],
+                [3, 4, 5, 8, 6, 7, 0, 1, 2],
+                [6, 7, 8, 2, 0, 1, 3, 4, 5])
+    before = grid.copy()
+
+    lexicograph_block(grid, 0, 1)  # block 1 spans columns 3, 4, 5
+
+    np.testing.assert_array_equal(grid[:, 0:3], before[:, 0:3])
+    np.testing.assert_array_equal(grid[:, 6:9], before[:, 6:9])
+    np.testing.assert_array_equal(grid[0, 3:6], [3, 4, 5])
+
+
+def test_reorders_the_whole_grid_not_just_the_first_band():
+    grid = np.array([[3, 7, 1, 0, 0, 0, 0, 0, 0],
+                     [4, 5, 6, 0, 0, 0, 0, 0, 0],
+                     [2, 0, 8, 0, 0, 0, 0, 0, 0],
+                     [10, 11, 12, 0, 0, 0, 0, 0, 0],
+                     [13, 14, 15, 0, 0, 0, 0, 0, 0],
+                     [16, 17, 18, 0, 0, 0, 0, 0, 0]])
+
+    lexicograph_block(grid, 0, 0)  # order argsort([3, 7, 1]) == [2, 0, 1]
+
+    # The column permutation derived from band 0's first row is applied to the
+    # second band's rows too.
+    np.testing.assert_array_equal(
+        grid[3:6, 0:3], [[12, 10, 11], [15, 13, 14], [18, 16, 17]]
+    )
+
+
+def test_block_row_selects_which_band_defines_the_order():
+    grid = np.array([[0, 1, 2, 0, 0, 0, 0, 0, 0],
+                     [0, 1, 2, 0, 0, 0, 0, 0, 0],
+                     [0, 1, 2, 0, 0, 0, 0, 0, 0],
+                     [7, 3, 5, 0, 0, 0, 0, 0, 0],
+                     [1, 2, 0, 0, 0, 0, 0, 0, 0],
+                     [8, 4, 6, 0, 0, 0, 0, 0, 0]])
+
+    lexicograph_block(grid, 1, 0)  # order from row 3: argsort([7, 3, 5]) == [1, 2, 0]
+
+    np.testing.assert_array_equal(grid[3, 0:3], [3, 5, 7])
+    np.testing.assert_array_equal(grid[0, 0:3], [1, 2, 0])  # same permutation, band 0
+
+
+# --- relabel_band ---------------------------------------------------------
 
 
 def test_relabel_makes_first_block_identity():
-    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    b2 = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8])
+    b = band([3, 7, 1, 0, 5, 8, 2, 4, 6],
+             [4, 5, 6, 1, 3, 7, 0, 5, 8],
+             [2, 0, 8, 2, 4, 6, 1, 3, 7])
 
-    r1, r2 = relabel_blocks(b1, b2)
+    result = relabel_band(b)
 
-    np.testing.assert_array_equal(r1, np.arange(9))
-
-
-def test_relabel_applies_same_token_map_to_other_blocks():
-    b1 = np.array([2, 0, 1])
-    b2 = np.array([1, 2, 0])
-
-    # token->digit map from b1: 2->0, 0->1, 1->2
-    r1, r2 = relabel_blocks(b1, b2)
-
-    np.testing.assert_array_equal(r1, [0, 1, 2])
-    np.testing.assert_array_equal(r2, [2, 0, 1])
+    assert result is None
+    np.testing.assert_array_equal(b[:, :3], IDENTITY_BLOCK)
 
 
-def test_relabel_preserves_equal_tokens_across_blocks():
-    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
-    b2 = np.array([8, 8, 2, 2, 5, 5, 0, 0, 3])  # not a permutation, but tokens still map
+def test_relabel_applies_the_same_token_map_to_the_whole_band():
+    b = band([3, 7, 1, 0, 5, 8, 2, 4, 6],
+             [4, 5, 6, 1, 3, 7, 0, 5, 8],
+             [2, 0, 8, 2, 4, 6, 1, 3, 7])
+    original = b.copy()
 
-    r1, r2 = relabel_blocks(b1, b2)
+    relabel_band(b)
 
-    # Build the expected token->digit map straight from b1.
-    mapping = {tok: i for i, tok in enumerate(b1.tolist())}
-    np.testing.assert_array_equal(r2, [mapping[t] for t in b2.tolist()])
-
-
-def test_relabel_identity_when_first_block_already_sorted():
-    b1 = np.arange(9)
-    b2 = np.array([4, 8, 2, 5, 6, 7, 3, 1, 0])
-
-    r1, r2 = relabel_blocks(b1, b2)
-
-    np.testing.assert_array_equal(r1, b1)
-    np.testing.assert_array_equal(r2, b2)
+    # Token -> value map read straight from the original first block.
+    mapping = {tok: i for i, tok in enumerate(original[:, :3].ravel().tolist())}
+    expected = np.array([[mapping[v] for v in row] for row in original.tolist()])
+    np.testing.assert_array_equal(b, expected)
 
 
-def test_relabel_single_block():
-    (r1,) = relabel_blocks(np.array([3, 1, 2, 0]))
+def test_relabel_is_identity_when_first_block_already_sorted():
+    b = band([0, 1, 2, 4, 8, 2, 5, 6, 7],
+             [3, 4, 5, 0, 6, 1, 3, 1, 0],
+             [6, 7, 8, 5, 6, 7, 3, 1, 0])
+    original = b.copy()
 
-    np.testing.assert_array_equal(r1, [0, 1, 2, 3])
+    relabel_band(b)
 
-
-def test_relabel_returns_one_array_per_input():
-    blocks = [np.random.permutation(9) for _ in range(4)]
-
-    result = relabel_blocks(*blocks)
-
-    assert len(result) == 4
-    for original, relabelled in zip(blocks, result):
-        assert relabelled.shape == original.shape
+    np.testing.assert_array_equal(b, original)
 
 
-def test_relabel_does_not_mutate_inputs():
-    b1 = np.array([2, 0, 1, 3])
-    b2 = np.array([1, 3, 0, 2])
-    b1_copy, b2_copy = b1.copy(), b2.copy()
+def test_relabel_preserves_equal_tokens():
+    b = band([5, 2, 8, 8, 8, 2, 2, 5, 5],
+             [0, 3, 7, 0, 0, 3, 3, 7, 7],
+             [1, 6, 4, 1, 1, 6, 6, 4, 4])
+    original = b.copy()
 
-    relabel_blocks(b1, b2)
+    relabel_band(b)
 
-    np.testing.assert_array_equal(b1, b1_copy)
-    np.testing.assert_array_equal(b2, b2_copy)
+    for value in np.unique(original):
+        positions = original == value
+        assert len(np.unique(b[positions])) == 1
 
 
-# --- standardize_blocks ---------------------------------------------------------
+def test_relabel_works_for_k_equals_2():
+    b = np.array([[3, 1, 2, 0],
+                  [0, 2, 1, 3]])
+
+    relabel_band(b)
+
+    np.testing.assert_array_equal(b[:, :2], [[0, 1], [2, 3]])
+
+
+# --- standardize_band ---------------------------------------------------------
 
 
 def test_standardize_first_block_becomes_identity():
-    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+    b = band([3, 7, 1, 0, 4, 8, 2, 5, 6],
+             [4, 5, 6, 1, 3, 7, 0, 8, 2],
+             [2, 0, 8, 5, 6, 7, 3, 1, 4])
 
-    result = standardize_blocks(b1, b2)
+    standardize_band(b)
 
-    np.testing.assert_array_equal(result[0], np.arange(9))
+    np.testing.assert_array_equal(b[:, :3], IDENTITY_BLOCK)
 
 
 def test_standardize_other_blocks_have_ascending_first_row():
-    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
-    b2 = np.array([8, 1, 4, 0, 6, 2, 7, 3, 5])
-    b3 = np.array([2, 7, 0, 5, 8, 3, 6, 1, 4])
+    b = band([3, 7, 1, 0, 4, 8, 2, 5, 6],
+             [4, 5, 6, 1, 3, 7, 0, 8, 2],
+             [2, 0, 8, 5, 6, 7, 3, 1, 4])
 
-    result = standardize_blocks(b1, b2, b3)
+    standardize_band(b)
 
-    for block in result[1:]:
-        assert list(block[:3]) == sorted(block[:3])
+    for block_col in (1, 2):
+        first_row = b[0, block_col * 3:block_col * 3 + 3]
+        assert list(first_row) == sorted(first_row)
 
 
 def test_standardize_matches_relabel_then_lexicograph():
-    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+    b = band([3, 7, 1, 0, 4, 8, 2, 5, 6],
+             [4, 5, 6, 1, 3, 7, 0, 8, 2],
+             [2, 0, 8, 5, 6, 7, 3, 1, 4])
+    manual = b.copy()
 
-    r1, r2 = relabel_blocks(b1, b2)
-    expected = [r1, lexicograph_block(r2)]
+    relabel_band(manual)
+    lexicograph_block(manual, 0, 1)
+    lexicograph_block(manual, 0, 2)
+    standardize_band(b)
 
-    result = standardize_blocks(b1, b2)
-
-    np.testing.assert_array_equal(result[0], expected[0])
-    np.testing.assert_array_equal(result[1], expected[1])
+    np.testing.assert_array_equal(b, manual)
 
 
 def test_standardize_known_result():
-    b1 = np.array([3, 7, 1, 4, 5, 6, 2, 0, 8])
-    b2 = np.array([0, 4, 8, 1, 5, 6, 2, 3, 7])
+    b = band([3, 7, 1, 0, 4, 8, 2, 5, 6],
+             [4, 5, 6, 1, 3, 7, 0, 8, 2],
+             [2, 0, 8, 5, 6, 7, 3, 1, 4])
 
-    s1, s2 = standardize_blocks(b1, b2)
+    standardize_band(b)
 
-    np.testing.assert_array_equal(s1, [0, 1, 2, 3, 4, 5, 6, 7, 8])
-    np.testing.assert_array_equal(s2, [3, 7, 8, 4, 2, 5, 0, 6, 1])
-
-
-def test_standardize_preserves_row_membership_of_other_blocks():
-    # Relabelling + column reordering never moves a value across rows.
-    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
-    b2 = np.array([8, 1, 4, 0, 6, 2, 7, 3, 5])
-
-    r1, r2 = relabel_blocks(b1, b2)
-    result = standardize_blocks(b1, b2)
-
-    for row in range(3):
-        before = set(r2[row * 3:(row + 1) * 3].tolist())
-        after = set(result[1][row * 3:(row + 1) * 3].tolist())
-        assert before == after
+    np.testing.assert_array_equal(
+        b,
+        [[0, 1, 2, 3, 7, 8, 4, 5, 6],
+         [3, 4, 5, 0, 2, 1, 8, 6, 7],
+         [6, 7, 8, 5, 4, 1, 2, 3, 0]],
+    )
 
 
 def test_standardize_is_idempotent():
-    b1 = np.array([5, 2, 8, 0, 3, 7, 1, 6, 4])
-    b2 = np.array([8, 1, 4, 0, 6, 2, 7, 3, 5])
+    b = band([3, 7, 1, 0, 4, 8, 2, 5, 6],
+             [4, 5, 6, 1, 3, 7, 0, 8, 2],
+             [2, 0, 8, 5, 6, 7, 3, 1, 4])
 
-    once = standardize_blocks(b1, b2)
-    twice = standardize_blocks(*once)
+    standardize_band(b)
+    once = b.copy()
+    standardize_band(b)
 
-    for a, b in zip(once, twice):
-        np.testing.assert_array_equal(a, b)
+    np.testing.assert_array_equal(b, once)
 
 
-def test_standardize_returns_one_block_per_input():
-    blocks = [np.random.permutation(9) for _ in range(4)]
+def test_standardize_preserves_row_membership():
+    # Relabelling + column reordering never moves a value across rows.
+    b = band([3, 7, 1, 0, 4, 8, 2, 5, 6],
+             [4, 5, 6, 1, 3, 7, 0, 8, 2],
+             [2, 0, 8, 5, 6, 7, 3, 1, 4])
+    manual = b.copy()
+    relabel_band(manual)  # relabel keeps every value on its own row
 
-    result = standardize_blocks(*blocks)
+    standardize_band(b)
 
-    assert len(result) == len(blocks)
+    for row in range(3):
+        assert set(b[row].tolist()) == set(manual[row].tolist())
 
 
 def test_standardize_already_canonical_is_unchanged():
-    b1 = np.arange(9)
-    b2 = np.array([2, 5, 7, 0, 3, 8, 1, 4, 6])  # first row already ascending
+    b = band([0, 1, 2, 3, 4, 5, 6, 7, 8],
+             [3, 4, 5, 6, 7, 8, 0, 1, 2],
+             [6, 7, 8, 0, 1, 2, 3, 4, 5])
+    original = b.copy()
 
-    s1, s2 = standardize_blocks(b1, b2)
+    standardize_band(b)
 
-    np.testing.assert_array_equal(s1, b1)
-    np.testing.assert_array_equal(s2, b2)
+    np.testing.assert_array_equal(b, original)

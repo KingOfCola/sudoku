@@ -1,9 +1,13 @@
 """Validity checks for (partially) filled sudoku-like grids.
 
-A grid of order ``k`` is a ``k**2 x k**2`` array whose cells hold values in
-``0 .. k**2 - 1``. The classic 9x9 sudoku is ``k = 3``; a 4x4 "shidoku" is
-``k = 2``.
+A grid of order ``k`` is a 2D ``ndarray`` of shape ``(k**2, k**2)`` whose cells
+hold values in ``0 .. k**2 - 1`` and use ordinary matrix indexing
+(``grid[i, j]`` is row ``i``, column ``j``). The classic 9x9 sudoku is
+``k = 3``; a 4x4 "shidoku" is ``k = 2``. ``k`` is recovered from the grid shape
+as ``math.isqrt(grid.shape[0])``.
 """
+
+from math import isqrt
 
 import numpy as np
 
@@ -50,18 +54,18 @@ def check_latin(grid):
     return True
 
 
-def check_blocks(grid, k):
+def check_blocks(grid):
     """Check that every ``k x k`` block of ``grid`` holds all values ``0 .. k**2-1``.
 
     ``grid`` is split into a ``k`` by ``k`` arrangement of non-overlapping
-    ``k x k`` blocks. Each block must contain every value in ``0 .. k**2 - 1``
-    exactly once -- the "box" constraint of sudoku. Rows and columns are not
-    checked here; use :func:`check_latin` for those.
+    ``k x k`` blocks (``k = isqrt(grid.shape[0])``). Each block must contain
+    every value in ``0 .. k**2 - 1`` exactly once -- the "box" constraint of
+    sudoku. Rows and columns are not checked here; use :func:`check_latin` for
+    those.
 
     Args:
-        grid: A 2D numpy array. It must have shape ``(k**2, k**2)``.
-        k: The block size (order of the grid). ``k = 3`` for a standard 9x9
-            sudoku, ``k = 2`` for a 4x4 grid.
+        grid: A 2D numpy array. It must be square with a side length that is a
+            perfect square (``(k**2, k**2)``).
 
     Returns:
         ``True`` if every block is a permutation of ``0 .. k**2 - 1``,
@@ -73,13 +77,15 @@ def check_blocks(grid, k):
         ...                  [2, 3, 0, 1],
         ...                  [1, 0, 3, 2],
         ...                  [3, 2, 1, 0]])
-        >>> check_blocks(grid, k=2)
+        >>> check_blocks(grid)
         True
     """
-    m = k ** 2
+    if grid.ndim != 2 or grid.shape[0] != grid.shape[1]:
+        return False
 
-    # Check that the grid has the correct shape.
-    if grid.shape != (m, m):
+    m = grid.shape[0]
+    k = isqrt(m)
+    if k * k != m:
         return False
 
     for row in range(k):

@@ -13,50 +13,46 @@ representative per distinct signature.
 
 :func:`collapse_by_permutation` collapses a coarser equivalence instead: bands
 that match after permuting the three rows and the columns within each block.
+
+Bands here are 2D ``ndarray`` of shape ``(k, k**2)`` (3x9) with ordinary matrix
+indexing.
 """
 
 import itertools
+from math import isqrt
 
-import numpy as np
-
-from counter.standardizer import standardize_blocks
 from tqdm import tqdm
+
+from counter.standardizer import standardize_band
 
 def collapser_by_column(bands):
     """Group first bands by their column signature, keeping one of each.
 
     Args:
-        bands: Iterable of first bands. Each band is a length ``k * n``
-            sequence (27 for the 9x9 case) of digits, flattened row-major
-            with ``n = 9`` columns.
+        bands: Iterable of first bands, each a ``(k, k**2)`` int array.
 
     Returns:
-        dict: maps each signature integer (see :func:`encode`, called with
-        ``n = 9``) to the first band seen carrying that signature. Its length
-        is the number of distinct signatures; the multiplicity of each class
-        is not retained.
+        dict: maps each signature integer (see :func:`encode_columns`) to the
+        first band seen carrying that signature. Its length is the number of
+        distinct signatures; the multiplicity of each class is not retained.
     """
     uncollapsed = {}
 
     for band in bands:
-        encoding = encode_columns(band, 9)
+        encoding = encode_columns(band)
         if encoding not in uncollapsed.keys():
             uncollapsed[encoding] = band
 
     return uncollapsed
 
-def encode_columns(band, n):
+def encode_columns(band):
     """Return the per-column digit signature of a band as a single integer.
 
     Each column is reduced to an ``n``-bit mask (bit ``d`` set iff digit ``d``
-    appears somewhere in that column). The ``n`` masks are then concatenated,
-    most significant column first, into one ``n * n``-bit integer -- Python
-    ints are arbitrary precision, so this is exact for any ``n``. The number
-    of rows ``k`` is inferred as ``len(band) // n``.
-
-    Args:
-        band: Length ``k * n`` sequence of digits, flattened row-major.
-        n: Number of columns.
+    appears somewhere in that column), where ``n = band.shape[1]``. The ``n``
+    masks are then concatenated, most significant column first, into one
+    ``n * n``-bit integer -- Python ints are arbitrary precision, so this is
+    exact for any ``n``.
 
     Returns:
         int: a value in ``[0, 2 ** (n * n))``. Two bands compare equal here
@@ -64,14 +60,14 @@ def encode_columns(band, n):
         regardless of digit order within a column or of how the rows are
         arranged.
     """
-    k = len(band) // n
+    n = band.shape[1]
     encoding = 0
     for col in range(n):
         col_encoding = 0
-        for row in range(k):
-            # int() keeps this a Python (arbitrary precision) int even when
-            # band is a numpy array -- an n*n-bit value overflows numpy ints.
-            col_encoding |= 1 << int(band[row * n + col])
+        for value in band[:, col]:
+            # int() keeps this a Python (arbitrary precision) int even though
+            # band holds numpy ints -- an n*n-bit value overflows numpy ints.
+            col_encoding |= 1 << int(value)
         encoding = (encoding << n) | col_encoding
     return encoding
 
@@ -81,12 +77,11 @@ def collapse_by_permutation(bands):
     Two first bands are treated as equivalent when one can be turned into the
     other by permuting the three band rows and/or permuting the three columns
     within any block, after both are put in block-standard form by
-    :func:`standardize_band` (identity block 1, ascending first row per block).
+    :func:`counter.standardizer.standardize_band` (identity block 1, ascending
+    first row per block).
 
     Args:
-        bands: Iterable of first bands. Each band is a length ``k * n``
-            sequence (27 for the 9x9 case) of digits, flattened row-major
-            with ``n = 9`` columns.
+        bands: Iterable of first bands, each a ``(k, k**2)`` int array.
 
     Returns:
         dict: maps the orbit key -- ``min`` over :func:`encode_by_band` of every
@@ -98,13 +93,15 @@ def collapse_by_permutation(bands):
     seen = set()
 
     for band in tqdm(bands, total=len(bands), desc="Collapsing by permutation"):
-        key = encode_by_band(standardize_band(band, 3), 9)
+        standardized = band.copy()
+        standardize_band(standardized)
+        key = encode_by_band(standardized)
         if key in seen:
             continue
 
         orbit = {}
         for permuted_band in generate_permutations(band):
-            orbit[encode_by_band(permuted_band, 9)] = permuted_band
+            orbit[encode_by_band(permuted_band)] = permuted_band
 
         seen.update(orbit)
 
@@ -114,66 +111,47 @@ def collapse_by_permutation(bands):
 
     return collapsed
 
-def encode_by_band(band, n):
+def encode_by_band(band):
     """Encode a band as a base-10 integer, one digit per cell, row-major.
 
     Injective for digits ``0 .. 9``; used only to give each band a comparable
     key so an orbit can be summarised by its smallest member.
     """
-    k = len(band) // n
     encoding = 0
-    for row in range(k):
-        for col in range(n):
-            encoding = encoding * 10 + int(band[row * n + col])
+    for value in band.ravel():
+        encoding = encoding * 10 + int(value)
     return encoding
 
 def generate_permutations(band):
-    for perm_block_1 in itertools.permutations(range(3)):
-        for perm_block_2 in itertools.permutations(range(3)):
-            for perm_block_3 in itertools.permutations(range(3)):
-                for perm_rows in itertools.permutations(range(3)):
-                    permuted_band = np.copy(band)
-                    permute_columns(permuted_band, np.array(perm_block_1), 3)
-                    permute_columns(permuted_band, np.array(perm_block_2) + 3, 3)
-                    permute_columns(permuted_band, np.array(perm_block_3) + 6, 3)
-                    permute_rows(permuted_band, np.array(perm_rows), 9)
+    """Yield every standardized band reachable from ``band`` by permuting its
+    rows and the columns within each block.
 
-                    st_band = standardize_band(permuted_band, 3)
-                    yield st_band
+    ``6 ** 4`` bands are produced (one row permutation and one column
+    permutation per block), with duplicates once :func:`standardize_band`
+    folds equivalent arrangements together.
+    """
+    k = isqrt(band.shape[1])
+    for block_perms in itertools.product(itertools.permutations(range(k)), repeat=k):
+        for row_perm in itertools.permutations(range(k)):
+            permuted_band = band.copy()
+            for block_index, order in enumerate(block_perms):
+                permute_columns(permuted_band, block_index, order)
+            permute_rows(permuted_band, row_perm)
 
-def permute_columns(band, order, k):
-    """In place: rearrange one block's columns; ``order`` holds that block's
-    absolute column indices in their new order (so block column ``sorted(order)[i]``
-    takes the old contents of column ``order[i]``)."""
-    n = k ** 2
-    order = np.asarray(order)
-    block_cols = np.sort(order)
-    for row in range(k):
-        base = row * n
-        band[base + block_cols] = band[base + order]
+            standardize_band(permuted_band)
+            yield permuted_band
 
-def permute_rows(band, order, n):
-    k = len(band) // n
-    for col in range(n):
-        idx1 = np.arange(k) * n + col
-        idx2 = np.array(order) * n + col
-        band[idx1], band[idx2] = band[idx2], band[idx1]
+def permute_columns(band, block_index, order):
+    """In place: rearrange the columns of one block.
 
-def standardize_band(band, k):
-    n = k ** 2
-    # Each block is flattened row-major (top-left to bottom-right), which is the
-    # layout counter.standardizer expects and the same layout used to write the
-    # standardized blocks back below.
-    blocks = [
-        [band[row * n + block * k + col] for row in range(k) for col in range(k)]
-        for block in range(k)
-    ]
+    ``order`` is a within-block permutation of ``0 .. k-1``: the block's
+    column ``i`` receives the old contents of the block's column ``order[i]``.
+    """
+    k = isqrt(band.shape[1])
+    cols = slice(block_index * k, (block_index + 1) * k)
+    band[:, cols] = band[:, cols][:, list(order)]
 
-    standardized_blocks = standardize_blocks(*blocks)
-    standardized_band = np.zeros_like(band)
-    for block_idx, block in enumerate(standardized_blocks):
-        for row in range(k):
-            for col in range(k):
-                standardized_band[row * n + block_idx * k + col] = block[row * k + col]
-
-    return standardized_band
+def permute_rows(band, order):
+    """In place: reorder the rows of ``band`` -- row ``i`` receives the old
+    row ``order[i]``."""
+    band[:] = band[list(order), :]
