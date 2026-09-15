@@ -17,7 +17,9 @@ Grids of general order `k` are supported (`k=3` is the classic 9x9 sudoku; `k=2`
 - `src/counter/standardizer.py` — puts a band into canonical form in place: `relabel_band` (first block becomes the identity block), `lexicograph_block` (ascending first row per block), `standardize_band` (both steps).
 - `src/counter/collapser.py` — reduces the enumerated bands to inequivalent representatives: `collapser_by_column` (group by per-column digit signature) and `collapse_by_permutation` (group by full row/column permutation orbit).
 - `src/storage/grid_store.py` — saves/loads lists of grids to/from a human-readable text format and a compact bit-packed binary format (`save_grids_text`/`load_grids_text`, `save_grids_binary`/`load_grids_binary`); accepts paths or already-open file objects.
+- `src/visualizer/display.py` — `show_grid` draws a grid on a matplotlib `Axes` (block/cell grid lines + cell values).
 - `scripts/first_block_row_enumerator.py` — runnable driver that ties enumeration + collapsing together and prints counts.
+- `scripts/recounter.py` — exploratory/WIP script using `show_grid` to visualize a grid.
 - `tests/` mirrors `src/` (`tests/checker/`, `tests/counter/`, `tests/storage/`).
 - `conftest.py` — parses `.env`'s `PYTHONPATH` so the IDE and pytest agree on import paths.
 

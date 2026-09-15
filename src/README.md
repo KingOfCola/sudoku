@@ -8,6 +8,7 @@ Importable library code (on `PYTHONPATH` via root [`.env`](../.env) and
 - [checker/README.md](checker/README.md) — validity checks for (partial) sudoku grids.
 - [counter/README.md](counter/README.md) — band enumeration, standardization and symmetry-collapsing for grid counting.
 - [storage/README.md](storage/README.md) — text and binary on-disk storage for lists of grids.
+- [visualizer/README.md](visualizer/README.md) — matplotlib rendering of a grid.
 
 ## Related
 

@@ -11,6 +11,8 @@ end to end (as opposed to `src/`, which holds importable modules only).
   - [`counter.first_block_row.enumerate_canonical_first_band`](../src/counter/first_block_row.py)
   - [`counter.collapser.collapse_by_permutation`](../src/counter/collapser.py)
   - [`counter.collapser.collapser_by_column`](../src/counter/collapser.py)
+- [recounter.py](recounter.py) — exploratory/WIP script for visualizing
+  grids via [`visualizer.display.show_grid`](../src/visualizer/display.py).
 
 Run it via the project's venv (see [../CLAUDE.md](../CLAUDE.md)):
 
